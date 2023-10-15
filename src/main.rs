@@ -17,14 +17,14 @@ fn main() {
 
     let sell_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("buff_sell_prices", "The minimum Sell Price (in RMB)"),
-        &["item"],
+        &["item", "kind"],
     )
     .unwrap();
     registry.register(Box::new(sell_prices.clone())).unwrap();
 
     let buy_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("buff_buy_orders", "The max Buy Order Price (in RMB)"),
-        &["item"],
+        &["item", "kind"],
     )
     .unwrap();
     registry.register(Box::new(buy_prices.clone())).unwrap();
@@ -40,26 +40,31 @@ fn main() {
             ruff::TargetItem {
                 name: "Danger Zone Case".to_string(),
                 goods_id: 763236,
+                kind: ruff::ItemKind::Case,
             },
             ruff::TargetItem {
                 name: "Butterfly Knife | Marble Fade (Factory New)".to_string(),
                 goods_id: 42563,
+                kind: ruff::ItemKind::Knife,
             },
             ruff::TargetItem {
                 name: "AK-47 | Vulcan (Field-Tested)".to_string(),
                 goods_id: 33975,
+                kind: ruff::ItemKind::Weapon,
             },
         ];
 
         loop {
             for item in &items {
                 async {
+                    let kind_str: &'static str = (&item.kind).into();
+
                     match client.load_buyorders(&item).await {
                         Ok(buy_order) => {
                             tracing::info!("Buy Order Summary {:?}", buy_order);
 
                             buy_prices
-                                .with_label_values(&[&item.name])
+                                .with_label_values(&[&item.name, kind_str])
                                 .set(buy_order.max);
                         }
                         Err(e) => {
@@ -72,7 +77,7 @@ fn main() {
                             tracing::info!("Sell Order Summary {:?}", sell_order);
 
                             sell_prices
-                                .with_label_values(&[&item.name])
+                                .with_label_values(&[&item.name, kind_str])
                                 .set(sell_order.min);
                         }
                         Err(e) => {
