@@ -43,6 +43,16 @@ fn main() {
                 kind: ruff::ItemKind::Case,
             },
             ruff::TargetItem {
+                name: "Antwerp 2022 Challengers Sticker Capsule".to_string(),
+                goods_id: 894183,
+                kind: ruff::ItemKind::Case,
+            },
+            ruff::TargetItem {
+                name: "Antwerp 2022 Legends Sticker Capsule".to_string(),
+                goods_id: 894086,
+                kind: ruff::ItemKind::Case,
+            },
+            ruff::TargetItem {
                 name: "Butterfly Knife | Marble Fade (Factory New)".to_string(),
                 goods_id: 42563,
                 kind: ruff::ItemKind::Knife,
