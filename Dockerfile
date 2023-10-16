@@ -1,5 +1,5 @@
 # Based on https://kerkour.com/rust-small-docker-image
-FROM rust:nightly AS builder
+FROM rustlang/rust:nightly AS builder
 
 WORKDIR /server/ruff
 
