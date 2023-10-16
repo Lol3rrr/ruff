@@ -11,6 +11,7 @@ pub struct TargetItem {
     pub name: String,
     pub goods_id: u64,
     pub kind: ItemKind,
+    pub bought_at: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]

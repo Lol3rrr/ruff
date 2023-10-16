@@ -68,6 +68,18 @@ fn main() {
     .unwrap();
     registry.register(Box::new(buy_prices.clone())).unwrap();
 
+    let bought_at_prices = prometheus::GaugeVec::new(
+        prometheus::Opts::new(
+            "buff_bought_at",
+            "The Prices at which the items were bought",
+        ),
+        &["item", "kind"],
+    )
+    .unwrap();
+    registry
+        .register(Box::new(bought_at_prices.clone()))
+        .unwrap();
+
     let app = axum::Router::new()
         .route("/metrics", axum::routing::get(metrics))
         .with_state(registry);
@@ -82,13 +94,13 @@ fn main() {
                 async {
                     let kind_str: &'static str = (&item.kind).into();
 
+                    let labels = [&item.name, kind_str];
+
                     match client.load_buyorders(&item).await {
                         Ok(buy_order) => {
                             tracing::info!("Buy Order Summary {:?}", buy_order);
 
-                            buy_prices
-                                .with_label_values(&[&item.name, kind_str])
-                                .set(buy_order.max);
+                            buy_prices.with_label_values(&labels).set(buy_order.max);
                         }
                         Err(e) => {
                             tracing::error!("Loading Buy Orders {:?}", e);
@@ -99,14 +111,18 @@ fn main() {
                         Ok(sell_order) => {
                             tracing::info!("Sell Order Summary {:?}", sell_order);
 
-                            sell_prices
-                                .with_label_values(&[&item.name, kind_str])
-                                .set(sell_order.min);
+                            sell_prices.with_label_values(&labels).set(sell_order.min);
                         }
                         Err(e) => {
                             tracing::error!("Loading Sell Orders {:?}", e);
                         }
                     };
+
+                    if let Some(bought_price) = item.bought_at.as_ref() {
+                        bought_at_prices
+                            .with_label_values(&labels)
+                            .set(*bought_price);
+                    }
                 }
                 .instrument(tracing::info_span!("Updating Item Stats", ?item))
                 .await;
