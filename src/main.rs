@@ -18,13 +18,15 @@ fn main() {
 
     tracing::info!("Starting");
 
-    tracing::info!("Loading Configuration...");
+    let config_path = std::env::var("CONFIG_PATH").unwrap_or("./config.yaml".to_string());
+
+    tracing::info!("Loading Configuration from '{}'...", config_path);
 
     let config = runtime.block_on(async move {
-        let res = match tokio::fs::read("./config.yaml").await {
+        let res = match tokio::fs::read(&config_path).await {
             Ok(r) => r,
             Err(e) => {
-                tracing::error!("Could not read './config.yaml' {:?}", e);
+                tracing::error!("Could not read '{}' {:?}", config_path, e);
                 panic!();
             }
         };
@@ -38,9 +40,19 @@ fn main() {
         }
     });
 
-    tracing::info!("Loaded Configuration: {:#?}", config);
-
     let registry = prometheus::Registry::new();
+
+    let items = prometheus::GaugeVec::new(
+        prometheus::Opts::new("buff_items", "The Items being tracked"),
+        &["item", "kind"],
+    )
+    .unwrap();
+    registry.register(Box::new(items.clone())).unwrap();
+
+    for item in config.items.iter() {
+        let kind: &str = (&item.kind).into();
+        items.with_label_values(&[&item.name, kind]).set(1.0);
+    }
 
     let sell_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("buff_sell_prices", "The minimum Sell Price (in RMB)"),
