@@ -6,14 +6,15 @@ pub struct Client {
     req_client: reqwest::Client,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct TargetItem {
     pub name: String,
     pub goods_id: u64,
     pub kind: ItemKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ItemKind {
     Case,
     Weapon,

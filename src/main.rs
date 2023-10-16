@@ -2,6 +2,11 @@ use std::time::Duration;
 
 use tracing::Instrument;
 
+#[derive(Debug, serde::Deserialize)]
+struct Configuration {
+    items: Vec<ruff::TargetItem>,
+}
+
 fn main() {
     let subscriber = tracing_subscriber::fmt().with_ansi(false).finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
@@ -12,6 +17,28 @@ fn main() {
         .unwrap();
 
     tracing::info!("Starting");
+
+    tracing::info!("Loading Configuration...");
+
+    let config = runtime.block_on(async move {
+        let res = match tokio::fs::read("./config.yaml").await {
+            Ok(r) => r,
+            Err(e) => {
+                tracing::error!("Could not read './config.yaml' {:?}", e);
+                panic!();
+            }
+        };
+
+        match serde_yaml::from_slice::<Configuration>(&res) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Parsing Configuration {:?}", e);
+                panic!();
+            }
+        }
+    });
+
+    tracing::info!("Loaded Configuration: {:#?}", config);
 
     let registry = prometheus::Registry::new();
 
@@ -36,33 +63,7 @@ fn main() {
     runtime.spawn(async move {
         let mut client = ruff::Client::new();
 
-        let items = [
-            ruff::TargetItem {
-                name: "Danger Zone Case".to_string(),
-                goods_id: 763236,
-                kind: ruff::ItemKind::Case,
-            },
-            ruff::TargetItem {
-                name: "Antwerp 2022 Challengers Sticker Capsule".to_string(),
-                goods_id: 894183,
-                kind: ruff::ItemKind::Case,
-            },
-            ruff::TargetItem {
-                name: "Antwerp 2022 Legends Sticker Capsule".to_string(),
-                goods_id: 894086,
-                kind: ruff::ItemKind::Case,
-            },
-            ruff::TargetItem {
-                name: "Butterfly Knife | Marble Fade (Factory New)".to_string(),
-                goods_id: 42563,
-                kind: ruff::ItemKind::Knife,
-            },
-            ruff::TargetItem {
-                name: "AK-47 | Vulcan (Field-Tested)".to_string(),
-                goods_id: 33975,
-                kind: ruff::ItemKind::Weapon,
-            },
-        ];
+        let items = config.items;
 
         loop {
             for item in &items {
