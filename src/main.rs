@@ -40,10 +40,10 @@ fn main() {
         }
     });
 
-    let registry = prometheus::Registry::new();
+    let registry = prometheus::Registry::new_custom(Some("buff".to_string()), None).unwrap();
 
     let items = prometheus::GaugeVec::new(
-        prometheus::Opts::new("buff_items", "The Items being tracked"),
+        prometheus::Opts::new("items", "The Items being tracked"),
         &["item", "kind"],
     )
     .unwrap();
@@ -55,24 +55,21 @@ fn main() {
     }
 
     let sell_prices = prometheus::GaugeVec::new(
-        prometheus::Opts::new("buff_sell_prices", "The minimum Sell Price (in RMB)"),
+        prometheus::Opts::new("sell_prices", "The minimum Sell Price (in RMB)"),
         &["item", "kind"],
     )
     .unwrap();
     registry.register(Box::new(sell_prices.clone())).unwrap();
 
     let buy_prices = prometheus::GaugeVec::new(
-        prometheus::Opts::new("buff_buy_orders", "The max Buy Order Price (in RMB)"),
+        prometheus::Opts::new("buy_orders", "The max Buy Order Price (in RMB)"),
         &["item", "kind"],
     )
     .unwrap();
     registry.register(Box::new(buy_prices.clone())).unwrap();
 
     let bought_at_prices = prometheus::GaugeVec::new(
-        prometheus::Opts::new(
-            "buff_bought_at",
-            "The Prices at which the items were bought",
-        ),
+        prometheus::Opts::new("bought_at", "The Prices at which the items were bought"),
         &["item", "kind"],
     )
     .unwrap();
