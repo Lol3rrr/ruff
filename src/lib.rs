@@ -80,12 +80,28 @@ struct BuyOrderItem {
     pay_method_text: String,
     price: String,
     real_num: usize,
-    specific: serde_json::Value,
+    specific: Vec<BuyOrderSpecific>,
     state: String,
     state_text: String,
     tradable_cooldown: serde_json::Value,
     updated_at: usize,
     user_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct BuyOrderSpecific {
+    color: String,
+    simple_text: String,
+    text: String,
+    #[serde(flatten)]
+    ty: BuyOrderSpecificType,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", content = "values")]
+enum BuyOrderSpecificType {
+    #[serde(rename = "paintwear")]
+    PaintWear(Vec<String>),
 }
 
 #[derive(Debug, Deserialize)]
@@ -147,7 +163,7 @@ impl Client {
     #[tracing::instrument(skip(self))]
     pub async fn load_buyorders(&mut self, item: &TargetItem) -> Result<BuyOrderSummary, ()> {
         let url = format!(
-            "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1",
+            "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1&min_paintwear=-1&max_paintwear=-1",
             item.goods_id
         );
 
@@ -169,6 +185,8 @@ impl Client {
 
         match res {
             Response::OK { data, .. } => {
+                tracing::trace!("BuyOrderData: {:#?}", data);
+
                 let max = data
                     .items
                     .iter()

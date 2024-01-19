@@ -8,7 +8,10 @@ struct Configuration {
 }
 
 fn main() {
-    let subscriber = tracing_subscriber::fmt().with_ansi(false).finish();
+    let subscriber = tracing_subscriber::fmt()
+        .with_ansi(false)
+        //.with_max_level(tracing::Level::TRACE)
+        .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
     let runtime = tokio::runtime::Builder::new_current_thread()
