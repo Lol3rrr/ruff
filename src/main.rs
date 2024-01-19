@@ -4,8 +4,10 @@ use tracing::Instrument;
 
 #[derive(Debug, serde::Deserialize)]
 struct Configuration {
-    items: Vec<ruff::TargetItem>,
+    items: Vec<ruff::buff::TargetItem>,
 }
+
+const STEAM_LOADING: bool = false;
 
 fn main() {
     let subscriber = tracing_subscriber::fmt()
@@ -84,53 +86,21 @@ fn main() {
         .route("/metrics", axum::routing::get(metrics))
         .with_state(registry);
 
-    runtime.spawn(async move {
-        let mut client = ruff::Client::new();
+    runtime.spawn(gather_buff(
+        config.items.clone(),
+        buy_prices.clone(),
+        sell_prices.clone(),
+        bought_at_prices.clone(),
+    ));
 
-        let items = config.items;
-
-        loop {
-            for item in &items {
-                async {
-                    let kind_str: &'static str = (&item.kind).into();
-
-                    let labels = [&item.name, kind_str];
-
-                    match client.load_buyorders(&item).await {
-                        Ok(buy_order) => {
-                            tracing::info!("Buy Order Summary {:?}", buy_order);
-
-                            buy_prices.with_label_values(&labels).set(buy_order.max);
-                        }
-                        Err(e) => {
-                            tracing::error!("Loading Buy Orders {:?}", e);
-                        }
-                    };
-
-                    match client.load_sellorders(&item).await {
-                        Ok(sell_order) => {
-                            tracing::info!("Sell Order Summary {:?}", sell_order);
-
-                            sell_prices.with_label_values(&labels).set(sell_order.min);
-                        }
-                        Err(e) => {
-                            tracing::error!("Loading Sell Orders {:?}", e);
-                        }
-                    };
-
-                    if let Some(bought_price) = item.bought_at.as_ref() {
-                        bought_at_prices
-                            .with_label_values(&labels)
-                            .set(*bought_price);
-                    }
-                }
-                .instrument(tracing::info_span!("Updating Item Stats", ?item))
-                .await;
-            }
-
-            tokio::time::sleep(Duration::from_secs(60)).await;
-        }
-    });
+    if STEAM_LOADING {
+        runtime.spawn(gather_steam(
+            config.items.clone(),
+            buy_prices,
+            sell_prices,
+            bought_at_prices,
+        ));
+    }
 
     runtime.block_on(async move {
         axum::Server::bind(&"0.0.0.0:80".parse().unwrap())
@@ -155,5 +125,81 @@ async fn metrics(
 
             String::new()
         }
+    }
+}
+
+#[tracing::instrument(skip(items, buy_prices, sell_prices, bought_at_prices))]
+async fn gather_buff(
+    items: Vec<ruff::buff::TargetItem>,
+    buy_prices: prometheus::GaugeVec,
+    sell_prices: prometheus::GaugeVec,
+    bought_at_prices: prometheus::GaugeVec,
+) {
+    let mut client = ruff::buff::Client::new();
+
+    loop {
+        for item in &items {
+            async {
+                let kind_str: &'static str = (&item.kind).into();
+
+                let labels = [&item.name, kind_str];
+
+                match client.load_buyorders(&item).await {
+                    Ok(buy_order) => {
+                        tracing::info!("Buy Order Summary {:?}", buy_order,);
+
+                        buy_prices.with_label_values(&labels).set(buy_order.max);
+                    }
+                    Err(e) => {
+                        tracing::error!("Loading Buy Orders {:?}", e);
+                    }
+                };
+
+                match client.load_sellorders(&item).await {
+                    Ok(sell_order) => {
+                        tracing::info!("Sell Order Summary {:?}", sell_order,);
+
+                        sell_prices.with_label_values(&labels).set(sell_order.min);
+                    }
+                    Err(e) => {
+                        tracing::error!("Loading Sell Orders {:?}", e);
+                    }
+                };
+
+                if let Some(bought_price) = item.bought_at.as_ref() {
+                    bought_at_prices
+                        .with_label_values(&labels)
+                        .set(*bought_price);
+                }
+            }
+            .instrument(tracing::info_span!("Updating Item Stats", ?item))
+            .await;
+        }
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
+}
+
+#[tracing::instrument(skip(items, buy_prices, sell_prices, bought_at_prices))]
+async fn gather_steam(
+    items: Vec<ruff::buff::TargetItem>,
+    buy_prices: prometheus::GaugeVec,
+    sell_prices: prometheus::GaugeVec,
+    bought_at_prices: prometheus::GaugeVec,
+) {
+    let mut client = ruff::buff::Client::new();
+
+    loop {
+        for item in &items {
+            async {
+                let tmp = ruff::steam::load_item(&item.name, &client.req_client).await;
+
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+            .instrument(tracing::info_span!("Updating Item Stats", ?item))
+            .await;
+        }
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
     }
 }
