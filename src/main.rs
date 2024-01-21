@@ -138,6 +138,8 @@ async fn gather_buff(
     let mut client = ruff::buff::Client::new();
 
     loop {
+        tracing::info!("Loading Buff Data");
+
         for item in &items {
             async {
                 let kind_str: &'static str = (&item.kind).into();
