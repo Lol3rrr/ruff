@@ -30,7 +30,7 @@ pub enum Condition {
     MinimalWear,
     FieldTested,
     WellWorn,
-    BattleScared,
+    BattleScarred,
 }
 
 impl From<&Condition> for &'static str {
@@ -40,7 +40,7 @@ impl From<&Condition> for &'static str {
             Condition::MinimalWear => "minimal-wear",
             Condition::FieldTested => "field-tested",
             Condition::WellWorn => "well-worn",
-            Condition::BattleScared => "battle-scared",
+            Condition::BattleScarred => "battle-scarred",
         }
     }
 }
