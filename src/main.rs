@@ -4,7 +4,7 @@ use tracing::Instrument;
 
 #[derive(Debug, serde::Deserialize)]
 struct Configuration {
-    items: Vec<ruff::buff::TargetItem>,
+    items: Vec<ruff::ConfigItem>,
 }
 
 const STEAM_LOADING: bool = false;
@@ -61,21 +61,21 @@ fn main() {
 
     let sell_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("sell_prices", "The minimum Sell Price (in RMB)"),
-        &["item", "kind"],
+        &["item", "kind", "condition"],
     )
     .unwrap();
     registry.register(Box::new(sell_prices.clone())).unwrap();
 
     let buy_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("buy_orders", "The max Buy Order Price (in RMB)"),
-        &["item", "kind"],
+        &["item", "kind", "condition"],
     )
     .unwrap();
     registry.register(Box::new(buy_prices.clone())).unwrap();
 
     let bought_at_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("bought_at", "The Prices at which the items were bought"),
-        &["item", "kind"],
+        &["item", "kind", "condition"],
     )
     .unwrap();
     registry
@@ -130,7 +130,7 @@ async fn metrics(
 
 #[tracing::instrument(skip(items, buy_prices, sell_prices, bought_at_prices))]
 async fn gather_buff(
-    items: Vec<ruff::buff::TargetItem>,
+    items: Vec<ruff::ConfigItem>,
     buy_prices: prometheus::GaugeVec,
     sell_prices: prometheus::GaugeVec,
     bought_at_prices: prometheus::GaugeVec,
@@ -143,8 +143,10 @@ async fn gather_buff(
         for item in &items {
             async {
                 let kind_str: &'static str = (&item.kind).into();
+                let condition_str: &'static str =
+                    item.condition.as_ref().map(|c| c.into()).unwrap_or("");
 
-                let labels = [&item.name, kind_str];
+                let labels = [&item.name, kind_str, condition_str];
 
                 match client.load_buyorders(&item).await {
                     Ok(buy_order) => {
@@ -184,7 +186,7 @@ async fn gather_buff(
 
 #[tracing::instrument(skip(items, buy_prices, sell_prices, bought_at_prices))]
 async fn gather_steam(
-    items: Vec<ruff::buff::TargetItem>,
+    items: Vec<ruff::ConfigItem>,
     buy_prices: prometheus::GaugeVec,
     sell_prices: prometheus::GaugeVec,
     bought_at_prices: prometheus::GaugeVec,

@@ -2,36 +2,10 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+use crate::ConfigItem;
+
 pub struct Client {
     pub req_client: reqwest::Client,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct TargetItem {
-    pub name: String,
-    pub goods_id: u64,
-    pub kind: ItemKind,
-    pub bought_at: Option<f64>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ItemKind {
-    Case,
-    Weapon,
-    Knife,
-    Glove,
-}
-
-impl From<&ItemKind> for &'static str {
-    fn from(value: &ItemKind) -> Self {
-        match value {
-            ItemKind::Case => "case",
-            ItemKind::Weapon => "weapon",
-            ItemKind::Knife => "knife",
-            ItemKind::Glove => "glove",
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -47,7 +21,15 @@ pub struct SellOrderSummary {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "code")]
 enum Response<D> {
-    OK { data: D, msg: serde_json::Value },
+    OK {
+        data: D,
+        msg: serde_json::Value,
+    },
+    #[serde(rename = "Login Required")]
+    LoginRequired {
+        error: String,
+        extra: Option<serde_json::Value>,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -161,7 +143,7 @@ impl Client {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn load_buyorders(&mut self, item: &TargetItem) -> Result<BuyOrderSummary, ()> {
+    pub async fn load_buyorders(&mut self, item: &ConfigItem) -> Result<BuyOrderSummary, ()> {
         let url = format!(
             "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1&min_paintwear=-1&max_paintwear=-1",
             item.goods_id
@@ -195,11 +177,16 @@ impl Client {
 
                 Ok(BuyOrderSummary { max })
             }
+            Response::LoginRequired { error, extra } => {
+                tracing::error!("Missing Login");
+
+                return Err(());
+            }
         }
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn load_sellorders(&mut self, item: &TargetItem) -> Result<SellOrderSummary, ()> {
+    pub async fn load_sellorders(&mut self, item: &ConfigItem) -> Result<SellOrderSummary, ()> {
         let url = format!(
             "https://buff.163.com/api/market/goods/sell_order?game=csgo&goods_id={}&page_num=1",
             item.goods_id
@@ -230,6 +217,11 @@ impl Client {
                     .fold(f64::MAX, |acc, val| if val < acc { val } else { acc });
 
                 Ok(SellOrderSummary { min })
+            }
+            Response::LoginRequired { error, extra } => {
+                tracing::error!("Missing Login");
+
+                return Err(());
             }
         }
     }
