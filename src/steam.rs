@@ -1,5 +1,8 @@
 use serde::Deserialize;
 
+mod inventory;
+pub use inventory::Inventory;
+
 #[derive(Debug, Deserialize)]
 pub struct ItemOrderHistogram {
     success: serde_json::Value,

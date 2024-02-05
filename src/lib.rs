@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
 pub mod buff;
+pub mod openexchange;
 pub mod steam;
 
 #[derive(Debug, Clone, Deserialize)]

@@ -1,10 +1,11 @@
-use std::time::Duration;
+use std::{ascii::escape_default, time::Duration};
 
 use tracing::Instrument;
 
 #[derive(Debug, serde::Deserialize)]
 struct Configuration {
     items: Vec<ruff::ConfigItem>,
+    open_exchange_app: Option<String>,
 }
 
 const STEAM_LOADING: bool = false;
@@ -82,6 +83,40 @@ fn main() {
         .register(Box::new(bought_at_prices.clone()))
         .unwrap();
 
+    let conversions_metric = prometheus::GaugeVec::new(
+        prometheus::Opts::new("conversions", "The Conversion Rates"),
+        &["from", "to"],
+    )
+    .unwrap();
+    registry
+        .register(Box::new(conversions_metric.clone()))
+        .unwrap();
+
+    if let Some(app_id) = config.open_exchange_app {
+        let exchange_config = ruff::openexchange::Config::new(app_id);
+
+        runtime.spawn(async move {
+            let client = reqwest::Client::new();
+
+            loop {
+                match exchange_config.load_rates(&client).await {
+                    Ok(conversion_rates) => {
+                        tracing::info!("Conversion-Rates: {:#?}", conversion_rates);
+
+                        conversions_metric
+                            .with_label_values(&["CNY", "EUR"])
+                            .set(conversion_rates.rmb_to_euro);
+                    }
+                    Err(e) => {
+                        tracing::error!("Loading Conversion-Rates: {:?}", e);
+                    }
+                };
+
+                tokio::time::sleep(Duration::from_secs(60 * 60 * 24)).await;
+            }
+        });
+    }
+
     let app = axum::Router::new()
         .route("/metrics", axum::routing::get(metrics))
         .with_state(registry);
@@ -101,6 +136,8 @@ fn main() {
             bought_at_prices,
         ));
     }
+
+    tracing::info!("Starting to listen on 0.0.0.0:80");
 
     runtime.block_on(async move {
         axum::Server::bind(&"0.0.0.0:80".parse().unwrap())
