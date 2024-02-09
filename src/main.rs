@@ -75,6 +75,16 @@ fn main() {
     .unwrap();
     registry.register(Box::new(buy_prices.clone())).unwrap();
 
+    let buy_counts = prometheus::GaugeVec::new(
+        prometheus::Opts::new(
+            "buy_counts",
+            "The number of items that can be bought at the max Buy Order Price",
+        ),
+        &["item", "kind", "condition"],
+    )
+    .unwrap();
+    registry.register(Box::new(buy_counts.clone())).unwrap();
+
     let bought_at_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("bought_at", "The Prices at which the items were bought"),
         &["item", "kind", "condition"],
@@ -125,6 +135,7 @@ fn main() {
     runtime.spawn(gather_buff(
         config.items.clone(),
         buy_prices.clone(),
+        buy_counts.clone(),
         sell_prices.clone(),
         bought_at_prices.clone(),
     ));
@@ -170,6 +181,7 @@ async fn metrics(
 async fn gather_buff(
     items: Vec<ruff::ConfigItem>,
     buy_prices: prometheus::GaugeVec,
+    buy_counts: prometheus::GaugeVec,
     sell_prices: prometheus::GaugeVec,
     bought_at_prices: prometheus::GaugeVec,
 ) {
@@ -193,6 +205,9 @@ async fn gather_buff(
                         tracing::info!("Buy Order Summary {:?}", buy_order,);
 
                         buy_prices.with_label_values(&labels).set(buy_order.max);
+                        buy_counts
+                            .with_label_values(&labels)
+                            .set(buy_order.count as f64);
                     }
                     Err(e) => {
                         tracing::error!("Loading Buy Orders {:?}", e);

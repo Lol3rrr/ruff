@@ -11,6 +11,7 @@ pub struct Client {
 #[derive(Debug)]
 pub struct BuyOrderSummary {
     pub max: f64,
+    pub count: usize,
 }
 
 #[derive(Debug)]
@@ -189,13 +190,28 @@ impl Client {
             Response::Ok { data, .. } => {
                 tracing::trace!("BuyOrderData: {:#?}", data);
 
-                let max = data
+                let mut items: Vec<_> = data
                     .items
                     .iter()
-                    .filter_map(|item| item.price.parse::<f64>().ok())
-                    .fold(0.0, |acc, val| if val > acc { val } else { acc });
+                    .filter_map(|item| {
+                        let price: f64 = item.price.parse().ok()?;
 
-                Ok(BuyOrderSummary { max })
+                        Some((price, item.num.saturating_sub(item.real_num)))
+                    })
+                    .collect();
+
+                let max =
+                    items
+                        .iter()
+                        .map(|(p, _)| p)
+                        .fold(0.0, |acc, val| if *val > acc { *val } else { acc });
+
+                items.retain(|(p, _)| *p == max);
+
+                Ok(BuyOrderSummary {
+                    max,
+                    count: items.into_iter().map(|(_, c)| c).sum(),
+                })
             }
             Response::LoginRequired {
                 error,
