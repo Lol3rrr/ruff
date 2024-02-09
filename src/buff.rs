@@ -21,9 +21,11 @@ pub struct SellOrderSummary {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "code")]
 enum Response<D> {
-    OK {
+    #[serde(rename = "OK")]
+    Ok {
         data: D,
-        msg: serde_json::Value,
+        #[serde(rename = "msg")]
+        _msg: serde_json::Value,
     },
     #[serde(rename = "Login Required")]
     LoginRequired {
@@ -84,6 +86,8 @@ struct BuyOrderSpecific {
 enum BuyOrderSpecificType {
     #[serde(rename = "paintwear")]
     PaintWear(Vec<String>),
+    #[serde(rename = "unlock_style")]
+    UnlockStyle(serde_json::Value),
 }
 
 #[derive(Debug, Deserialize)]
@@ -166,7 +170,7 @@ impl Client {
         };
 
         match res {
-            Response::OK { data, .. } => {
+            Response::Ok { data, .. } => {
                 tracing::trace!("BuyOrderData: {:#?}", data);
 
                 let max = data
@@ -200,7 +204,15 @@ impl Client {
             }
         };
 
-        let res: Response<SellOrderData> = match req_res.json().await {
+        let raw_content = match req_res.bytes().await {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::error!("Getting response Bytes: {:?}", e);
+                return Err(());
+            }
+        };
+
+        let res: Response<SellOrderData> = match serde_json::from_slice(&raw_content) {
             Ok(v) => v,
             Err(e) => {
                 tracing::error!("Deserialzing Response {:?}", e);
@@ -209,7 +221,7 @@ impl Client {
         };
 
         match res {
-            Response::OK { data, .. } => {
+            Response::Ok { data, .. } => {
                 let min = data
                     .items
                     .iter()
