@@ -1,4 +1,4 @@
-use std::{ascii::escape_default, time::Duration};
+use std::time::Duration;
 
 use tracing::Instrument;
 

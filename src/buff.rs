@@ -139,6 +139,15 @@ struct SellOrderItem {
     user_id: String,
 }
 
+#[derive(Debug)]
+pub enum LoadError {
+    SendingRequest(reqwest::Error),
+    GettingContent(reqwest::Error),
+    StatusCode(reqwest::StatusCode),
+    Deserialzing(serde_json::Error),
+    ErrorResponse { msg: String },
+}
+
 impl Client {
     pub fn new() -> Self {
         Self {
@@ -147,7 +156,10 @@ impl Client {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn load_buyorders(&mut self, item: &ConfigItem) -> Result<BuyOrderSummary, ()> {
+    pub async fn load_buyorders(
+        &mut self,
+        item: &ConfigItem,
+    ) -> Result<BuyOrderSummary, LoadError> {
         let url = format!(
             "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1&min_paintwear=-1&max_paintwear=-1",
             item.goods_id
@@ -156,16 +168,26 @@ impl Client {
         let req_res = match self.req_client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
-                tracing::error!("Making Request {:?}", e);
-                return Err(());
+                return Err(LoadError::SendingRequest(e));
             }
         };
 
-        let res: Response<BuyOrderData> = match req_res.json().await {
+        let status = req_res.status();
+        if !status.is_success() {
+            return Err(LoadError::StatusCode(status));
+        }
+
+        let raw_content = match req_res.bytes().await {
+            Ok(c) => c,
+            Err(e) => {
+                return Err(LoadError::GettingContent(e));
+            }
+        };
+
+        let res: Response<BuyOrderData> = match serde_json::from_slice(&raw_content) {
             Ok(v) => v,
             Err(e) => {
-                tracing::error!("Deserialzing Response {:?}", e);
-                return Err(());
+                return Err(LoadError::Deserialzing(e));
             }
         };
 
@@ -181,16 +203,20 @@ impl Client {
 
                 Ok(BuyOrderSummary { max })
             }
-            Response::LoginRequired { error, extra } => {
-                tracing::error!("Missing Login");
-
-                return Err(());
+            Response::LoginRequired {
+                error,
+                extra: _extra,
+            } => {
+                return Err(LoadError::ErrorResponse { msg: error });
             }
         }
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn load_sellorders(&mut self, item: &ConfigItem) -> Result<SellOrderSummary, ()> {
+    pub async fn load_sellorders(
+        &mut self,
+        item: &ConfigItem,
+    ) -> Result<SellOrderSummary, LoadError> {
         let url = format!(
             "https://buff.163.com/api/market/goods/sell_order?game=csgo&goods_id={}&page_num=1",
             item.goods_id
@@ -199,24 +225,26 @@ impl Client {
         let req_res = match self.req_client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
-                tracing::error!("Making Request {:?}", e);
-                return Err(());
+                return Err(LoadError::SendingRequest(e));
             }
         };
+
+        let status = req_res.status();
+        if !status.is_success() {
+            return Err(LoadError::StatusCode(status));
+        }
 
         let raw_content = match req_res.bytes().await {
             Ok(c) => c,
             Err(e) => {
-                tracing::error!("Getting response Bytes: {:?}", e);
-                return Err(());
+                return Err(LoadError::GettingContent(e));
             }
         };
 
         let res: Response<SellOrderData> = match serde_json::from_slice(&raw_content) {
             Ok(v) => v,
             Err(e) => {
-                tracing::error!("Deserialzing Response {:?}", e);
-                return Err(());
+                return Err(LoadError::Deserialzing(e));
             }
         };
 
@@ -230,10 +258,11 @@ impl Client {
 
                 Ok(SellOrderSummary { min })
             }
-            Response::LoginRequired { error, extra } => {
-                tracing::error!("Missing Login");
-
-                return Err(());
+            Response::LoginRequired {
+                error,
+                extra: _extra,
+            } => {
+                return Err(LoadError::ErrorResponse { msg: error });
             }
         }
     }
