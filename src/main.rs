@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use rand::{Rng, SeedableRng};
 use tracing::Instrument;
 
 #[derive(Debug, serde::Deserialize)]
@@ -174,6 +175,8 @@ async fn gather_buff(
 ) {
     let mut client = ruff::buff::Client::new();
 
+    let mut rng = rand::rngs::SmallRng::from_entropy();
+
     loop {
         tracing::info!("Loading Buff Data");
 
@@ -214,6 +217,11 @@ async fn gather_buff(
                 }
             }
             .instrument(tracing::info_span!("Updating Item Stats", ?item))
+            .await;
+
+            tokio::time::sleep(
+                Duration::from_secs(3) + Duration::from_millis(rng.gen_range(0..500)),
+            )
             .await;
         }
 
