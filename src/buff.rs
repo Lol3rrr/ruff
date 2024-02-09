@@ -162,7 +162,7 @@ impl Client {
         item: &ConfigItem,
     ) -> Result<BuyOrderSummary, LoadError> {
         let url = format!(
-            "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1&min_paintwear=-1&max_paintwear=-1",
+            "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1&min_paintwear=-1&max_paintwear=-1&tag_ids=-1",
             item.goods_id
         );
 
