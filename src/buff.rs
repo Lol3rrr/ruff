@@ -165,31 +165,25 @@ impl Client {
             item.goods_id
         );
 
-        let req_res = match self.req_client.get(&url).send().await {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(LoadError::SendingRequest(e));
-            }
-        };
+        let req_res = self
+            .req_client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| LoadError::SendingRequest(e))?;
 
         let status = req_res.status();
         if !status.is_success() {
             return Err(LoadError::StatusCode(status));
         }
 
-        let raw_content = match req_res.bytes().await {
-            Ok(c) => c,
-            Err(e) => {
-                return Err(LoadError::GettingContent(e));
-            }
-        };
+        let raw_content = req_res
+            .bytes()
+            .await
+            .map_err(|e| LoadError::GettingContent(e))?;
 
-        let res: Response<BuyOrderData> = match serde_json::from_slice(&raw_content) {
-            Ok(v) => v,
-            Err(e) => {
-                return Err(LoadError::Deserialzing(e));
-            }
-        };
+        let res: Response<BuyOrderData> =
+            serde_json::from_slice(&raw_content).map_err(|e| LoadError::Deserialzing(e))?;
 
         match res {
             Response::Ok { data, .. } => {
@@ -222,31 +216,25 @@ impl Client {
             item.goods_id
         );
 
-        let req_res = match self.req_client.get(&url).send().await {
-            Ok(r) => r,
-            Err(e) => {
-                return Err(LoadError::SendingRequest(e));
-            }
-        };
+        let req_res = self
+            .req_client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| LoadError::SendingRequest(e))?;
 
         let status = req_res.status();
         if !status.is_success() {
             return Err(LoadError::StatusCode(status));
         }
 
-        let raw_content = match req_res.bytes().await {
-            Ok(c) => c,
-            Err(e) => {
-                return Err(LoadError::GettingContent(e));
-            }
-        };
+        let raw_content = req_res
+            .bytes()
+            .await
+            .map_err(|e| LoadError::GettingContent(e))?;
 
-        let res: Response<SellOrderData> = match serde_json::from_slice(&raw_content) {
-            Ok(v) => v,
-            Err(e) => {
-                return Err(LoadError::Deserialzing(e));
-            }
-        };
+        let res: Response<SellOrderData> =
+            serde_json::from_slice(&raw_content).map_err(|e| LoadError::Deserialzing(e))?;
 
         match res {
             Response::Ok { data, .. } => {
