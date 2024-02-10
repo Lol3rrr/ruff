@@ -12,6 +12,7 @@ pub struct Client {
 pub struct BuyOrderSummary {
     pub max: f64,
     pub count: usize,
+    pub listings: usize,
 }
 
 #[derive(Debug)]
@@ -210,7 +211,8 @@ impl Client {
 
                 Ok(BuyOrderSummary {
                     max,
-                    count: items.into_iter().map(|(_, c)| c).sum(),
+                    count: items.iter().map(|(_, c)| *c).sum(),
+                    listings: items.len(),
                 })
             }
             Response::LoginRequired {

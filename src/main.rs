@@ -11,6 +11,14 @@ struct Configuration {
 
 const STEAM_LOADING: bool = false;
 
+struct Metrics {
+    buy_prices: prometheus::GaugeVec,
+    buy_counts: prometheus::GaugeVec,
+    buy_listings: prometheus::GaugeVec,
+    sell_prices: prometheus::GaugeVec,
+    bought_at_prices: prometheus::GaugeVec,
+}
+
 fn main() {
     let subscriber = tracing_subscriber::fmt()
         .with_ansi(false)
@@ -85,6 +93,16 @@ fn main() {
     .unwrap();
     registry.register(Box::new(buy_counts.clone())).unwrap();
 
+    let buy_listings = prometheus::GaugeVec::new(
+        prometheus::Opts::new(
+            "buy_listings",
+            "The number of listings that buy at the max Buy Order Price",
+        ),
+        &["item", "kind", "condition"],
+    )
+    .unwrap();
+    registry.register(Box::new(buy_listings.clone())).unwrap();
+
     let bought_at_prices = prometheus::GaugeVec::new(
         prometheus::Opts::new("bought_at", "The Prices at which the items were bought"),
         &["item", "kind", "condition"],
@@ -134,10 +152,13 @@ fn main() {
 
     runtime.spawn(gather_buff(
         config.items.clone(),
-        buy_prices.clone(),
-        buy_counts.clone(),
-        sell_prices.clone(),
-        bought_at_prices.clone(),
+        Metrics {
+            buy_prices: buy_prices.clone(),
+            buy_counts: buy_counts.clone(),
+            buy_listings: buy_listings.clone(),
+            sell_prices: sell_prices.clone(),
+            bought_at_prices: bought_at_prices.clone(),
+        },
     ));
 
     if STEAM_LOADING {
@@ -177,14 +198,8 @@ async fn metrics(
     }
 }
 
-#[tracing::instrument(skip(items, buy_prices, sell_prices, bought_at_prices))]
-async fn gather_buff(
-    items: Vec<ruff::ConfigItem>,
-    buy_prices: prometheus::GaugeVec,
-    buy_counts: prometheus::GaugeVec,
-    sell_prices: prometheus::GaugeVec,
-    bought_at_prices: prometheus::GaugeVec,
-) {
+#[tracing::instrument(skip(items, metrics))]
+async fn gather_buff(items: Vec<ruff::ConfigItem>, metrics: Metrics) {
     let mut client = ruff::buff::Client::new();
 
     let mut rng = rand::rngs::SmallRng::from_entropy();
@@ -204,10 +219,18 @@ async fn gather_buff(
                     Ok(buy_order) => {
                         tracing::info!("Buy Order Summary {:?}", buy_order,);
 
-                        buy_prices.with_label_values(&labels).set(buy_order.max);
-                        buy_counts
+                        metrics
+                            .buy_prices
+                            .with_label_values(&labels)
+                            .set(buy_order.max);
+                        metrics
+                            .buy_counts
                             .with_label_values(&labels)
                             .set(buy_order.count as f64);
+                        metrics
+                            .buy_listings
+                            .with_label_values(&labels)
+                            .set(buy_order.listings as f64);
                     }
                     Err(e) => {
                         tracing::error!("Loading Buy Orders {:?}", e);
@@ -218,7 +241,10 @@ async fn gather_buff(
                     Ok(sell_order) => {
                         tracing::info!("Sell Order Summary {:?}", sell_order,);
 
-                        sell_prices.with_label_values(&labels).set(sell_order.min);
+                        metrics
+                            .sell_prices
+                            .with_label_values(&labels)
+                            .set(sell_order.min);
                     }
                     Err(e) => {
                         tracing::error!("Loading Sell Orders {:?}", e);
@@ -226,7 +252,8 @@ async fn gather_buff(
                 };
 
                 if let Some(bought_price) = item.bought_at.as_ref() {
-                    bought_at_prices
+                    metrics
+                        .bought_at_prices
                         .with_label_values(&labels)
                         .set(*bought_price);
                 }
