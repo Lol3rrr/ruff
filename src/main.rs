@@ -215,8 +215,6 @@ async fn gather_buff(items: Vec<ruff::ConfigItem>, metrics: Metrics) {
 
                 let labels = [&item.name, kind_str, condition_str];
 
-                println!("{:?}", labels);
-
                 match client.load_buyorders(&item).await {
                     Ok(buy_order) => {
                         tracing::info!("Buy Order Summary {:?}", buy_order,);
