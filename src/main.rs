@@ -59,14 +59,15 @@ fn main() {
 
     let items = prometheus::GaugeVec::new(
         prometheus::Opts::new("items", "The Items being tracked"),
-        &["item", "kind"],
+        &["item", "kind", "condition"],
     )
     .unwrap();
     registry.register(Box::new(items.clone())).unwrap();
 
-    for item in config.items.iter() {
-        let kind: &str = (&item.kind).into();
-        items.with_label_values(&[&item.name, kind]).set(1.0);
+    for item in config.items.iter().flat_map(|i| i.to_items().into_iter()) {
+        items
+            .with_label_values(&[&item.name, &item.kind, &item.condition])
+            .set(1.0);
     }
 
     let sell_prices = prometheus::GaugeVec::new(
@@ -213,6 +214,8 @@ async fn gather_buff(items: Vec<ruff::ConfigItem>, metrics: Metrics) {
                 let condition_str: &'static str = item.condition;
 
                 let labels = [&item.name, kind_str, condition_str];
+
+                println!("{:?}", labels);
 
                 match client.load_buyorders(&item).await {
                     Ok(buy_order) => {
