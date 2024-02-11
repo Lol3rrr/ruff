@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-use crate::ConfigItem;
+use crate::Item;
 
 pub struct Client {
     pub req_client: reqwest::Client,
@@ -158,13 +158,10 @@ impl Client {
     }
 
     #[tracing::instrument(skip(self))]
-    pub async fn load_buyorders(
-        &mut self,
-        item: &ConfigItem,
-    ) -> Result<BuyOrderSummary, LoadError> {
+    pub async fn load_buyorders(&mut self, item: &Item<'_>) -> Result<BuyOrderSummary, LoadError> {
         let url = format!(
             "https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={}&page_num=1&min_paintwear=-1&max_paintwear=-1&tag_ids=-1",
-            item.goods_id
+            item.buff_id
         );
 
         let req_res = self
@@ -209,6 +206,10 @@ impl Client {
 
                 items.retain(|(p, _)| *p == max);
 
+                if items.len() == 10 {
+                    tracing::info!("Need to load more buy orders, to see if there are more listings at the max price");
+                }
+
                 Ok(BuyOrderSummary {
                     max,
                     count: items.iter().map(|(_, c)| *c).sum(),
@@ -227,11 +228,11 @@ impl Client {
     #[tracing::instrument(skip(self))]
     pub async fn load_sellorders(
         &mut self,
-        item: &ConfigItem,
+        item: &Item<'_>,
     ) -> Result<SellOrderSummary, LoadError> {
         let url = format!(
             "https://buff.163.com/api/market/goods/sell_order?game=csgo&goods_id={}&page_num=1",
-            item.goods_id
+            item.buff_id
         );
 
         let req_res = self

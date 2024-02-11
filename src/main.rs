@@ -207,11 +207,10 @@ async fn gather_buff(items: Vec<ruff::ConfigItem>, metrics: Metrics) {
     loop {
         tracing::info!("Loading Buff Data");
 
-        for item in &items {
+        for item in items.iter().flat_map(|i| i.to_items().into_iter()) {
             async {
-                let kind_str: &'static str = (&item.kind).into();
-                let condition_str: &'static str =
-                    item.condition.as_ref().map(|c| c.into()).unwrap_or("");
+                let kind_str: &'static str = &item.kind;
+                let condition_str: &'static str = item.condition;
 
                 let labels = [&item.name, kind_str, condition_str];
 
