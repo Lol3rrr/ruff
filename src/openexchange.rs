@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 pub struct Config {
     app_id: String,
@@ -49,5 +49,26 @@ impl Config {
         Ok(Conversions {
             rmb_to_euro: content.rates.EUR / content.rates.CNY,
         })
+    }
+}
+
+pub async fn run(config: Config, conversions_metric: prometheus::GaugeVec) -> ! {
+    let client = reqwest::Client::new();
+
+    loop {
+        match config.load_rates(&client).await {
+            Ok(conversion_rates) => {
+                tracing::info!("Conversion-Rates: {:#?}", conversion_rates);
+
+                conversions_metric
+                    .with_label_values(&["CNY", "EUR"])
+                    .set(conversion_rates.rmb_to_euro);
+            }
+            Err(e) => {
+                tracing::error!("Loading Conversion-Rates: {:?}", e);
+            }
+        };
+
+        tokio::time::sleep(Duration::from_secs(60 * 60 * 24)).await;
     }
 }

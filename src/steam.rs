@@ -1,7 +1,10 @@
+use std::time::Duration;
+
 use serde::Deserialize;
 
 mod inventory;
 pub use inventory::Inventory;
+use tracing::Instrument;
 
 #[derive(Debug, Deserialize)]
 pub struct ItemOrderHistogram {
@@ -56,4 +59,23 @@ pub async fn load_item(item: &str, client: &reqwest::Client) {
     };
 
     tracing::info!("Loaded Histogram: {:#?}", content);
+}
+
+#[tracing::instrument(skip(items, metrics))]
+pub async fn gather(items: Vec<crate::config::ConfigItem>, metrics: crate::Metrics) {
+    let mut client = crate::buff::Client::new();
+
+    loop {
+        for item in &items {
+            async {
+                let tmp = crate::steam::load_item(&item.name, &client.req_client).await;
+
+                tokio::time::sleep(Duration::from_secs(5)).await;
+            }
+            .instrument(tracing::info_span!("Updating Item Stats", ?item))
+            .await;
+        }
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
+    }
 }

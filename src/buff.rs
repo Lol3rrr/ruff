@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
+use rand::{Rng, SeedableRng};
 use serde::Deserialize;
+use tracing::Instrument;
 
-use crate::Item;
+use crate::config::Item;
 
 pub struct Client {
     pub req_client: reqwest::Client,
@@ -272,5 +274,76 @@ impl Client {
                 return Err(LoadError::ErrorResponse { msg: error });
             }
         }
+    }
+}
+
+#[tracing::instrument(skip(items, metrics))]
+pub async fn gather(items: Vec<crate::config::ConfigItem>, metrics: crate::Metrics) {
+    let mut client = Client::new();
+
+    let mut rng = rand::rngs::SmallRng::from_entropy();
+
+    loop {
+        tracing::info!("Loading Buff Data");
+
+        for item in items.iter().flat_map(|i| i.to_items().into_iter()) {
+            async {
+                let kind_str: &'static str = &item.kind;
+                let condition_str: &'static str = item.condition;
+
+                let labels = [&item.name, kind_str, condition_str];
+
+                match client.load_buyorders(&item).await {
+                    Ok(buy_order) => {
+                        tracing::info!("Buy Order Summary {:?}", buy_order,);
+
+                        metrics
+                            .buy_prices
+                            .with_label_values(&labels)
+                            .set(buy_order.max);
+                        metrics
+                            .buy_counts
+                            .with_label_values(&labels)
+                            .set(buy_order.count as f64);
+                        metrics
+                            .buy_listings
+                            .with_label_values(&labels)
+                            .set(buy_order.listings as f64);
+                    }
+                    Err(e) => {
+                        tracing::error!("Loading Buy Orders {:?}", e);
+                    }
+                };
+
+                tokio::time::sleep(Duration::from_millis(rng.gen_range(2500..4500))).await;
+
+                match client.load_sellorders(&item).await {
+                    Ok(sell_order) => {
+                        tracing::info!("Sell Order Summary {:?}", sell_order,);
+
+                        metrics
+                            .sell_prices
+                            .with_label_values(&labels)
+                            .set(sell_order.min);
+                    }
+                    Err(e) => {
+                        tracing::error!("Loading Sell Orders {:?}", e);
+                    }
+                };
+
+                if let Some(bought_price) = item.bought_at.as_ref() {
+                    metrics
+                        .bought_at_prices
+                        .with_label_values(&labels)
+                        .set(*bought_price);
+                }
+
+                tokio::time::sleep(Duration::from_millis(rng.gen_range(2500..4500))).await;
+            }
+            .instrument(tracing::info_span!("Updating Item Stats", ?item))
+            .await;
+        }
+
+        tokio::time::sleep(Duration::from_secs(60)).await;
     }
 }
