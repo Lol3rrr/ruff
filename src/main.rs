@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use tracing::Instrument;
 
 #[derive(Debug, serde::Deserialize)]
@@ -121,6 +123,9 @@ fn main() {
                     }
                 };
 
+                // Add a small time delay to make sure that the new file will be read
+                tokio::time::sleep(Duration::from_secs(1)).await;
+
                 let res = match tokio::fs::read(&config_path).await {
                     Ok(r) => r,
                     Err(e) => {
@@ -137,9 +142,20 @@ fn main() {
                     }
                 };
 
-                item_list.store(std::sync::Arc::new(
-                    config.items.iter().flat_map(|i| i.to_items()).collect(),
-                ));
+                let new_items = config
+                    .items
+                    .iter()
+                    .flat_map(|i| i.to_items())
+                    .collect::<Vec<_>>();
+
+                let previous_item_list = item_list.load_full();
+                tracing::info!(
+                    "Items {:?} -> {:?}",
+                    previous_item_list.len(),
+                    new_items.len()
+                );
+
+                item_list.store(std::sync::Arc::new(new_items));
 
                 items.reset();
                 for item in config.items.iter().flat_map(|i| i.to_items().into_iter()) {
