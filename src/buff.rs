@@ -278,7 +278,10 @@ impl Client {
 }
 
 #[tracing::instrument(skip(items, metrics))]
-pub async fn gather(items: Vec<crate::config::ConfigItem>, metrics: crate::Metrics) {
+pub async fn gather(
+    items: std::sync::Arc<arc_swap::ArcSwap<Vec<Item<'static>>>>,
+    metrics: crate::Metrics,
+) {
     let mut client = Client::new();
 
     let mut rng = rand::rngs::SmallRng::from_entropy();
@@ -286,10 +289,12 @@ pub async fn gather(items: Vec<crate::config::ConfigItem>, metrics: crate::Metri
     loop {
         tracing::info!("Loading Buff Data");
 
-        for item in items.iter().flat_map(|i| i.to_items().into_iter()) {
+        let items = items.load();
+
+        for item in items.as_ref() {
             async {
-                let kind_str: &'static str = &item.kind;
-                let condition_str: &'static str = item.condition;
+                let kind_str: &str = &item.kind;
+                let condition_str: &str = item.condition;
 
                 let labels = [&item.name, kind_str, condition_str];
 

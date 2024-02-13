@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use tracing::Instrument;
 
 #[derive(Debug, serde::Deserialize)]
@@ -28,7 +26,7 @@ fn main() {
 
     tracing::info!("Loading Configuration from '{}'...", config_path);
 
-    let config = runtime.block_on(async move {
+    let config = runtime.block_on(async {
         let res = match tokio::fs::read(&config_path).await {
             Ok(r) => r,
             Err(e) => {
@@ -45,6 +43,14 @@ fn main() {
             }
         }
     });
+
+    let item_list_orig = std::sync::Arc::new(arc_swap::ArcSwap::from(std::sync::Arc::new(
+        config
+            .items
+            .iter()
+            .flat_map(|i| i.to_items())
+            .collect::<Vec<_>>(),
+    )));
 
     let registry = prometheus::Registry::new_custom(Some("buff".to_string()), None).unwrap();
 
@@ -82,7 +88,7 @@ fn main() {
         .with_state(registry);
 
     runtime.spawn(ruff::buff::gather(
-        config.items.clone(),
+        item_list_orig.clone(),
         metrics_collection.clone(),
     ));
 
@@ -92,6 +98,61 @@ fn main() {
             metrics_collection,
         ));
     }
+
+    // Use SIGHUP to dynamically reload configuration
+    let item_list = item_list_orig.clone();
+    runtime.spawn(
+        async move {
+            let mut signal_stream =
+                match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup()) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        tracing::error!("Getting SIGHUP stream: {:?}", e);
+                        return;
+                    }
+                };
+
+            loop {
+                match signal_stream.recv().await {
+                    Some(_) => {}
+                    None => {
+                        tracing::error!("Signal Stream Stopped");
+                        return;
+                    }
+                };
+
+                let res = match tokio::fs::read(&config_path).await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        tracing::error!("Could not read '{}' {:?}", config_path, e);
+                        continue;
+                    }
+                };
+
+                let config = match serde_yaml::from_slice::<Configuration>(&res) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::error!("Parsing Configuration {:?}", e);
+                        continue;
+                    }
+                };
+
+                item_list.store(std::sync::Arc::new(
+                    config.items.iter().flat_map(|i| i.to_items()).collect(),
+                ));
+
+                items.reset();
+                for item in config.items.iter().flat_map(|i| i.to_items().into_iter()) {
+                    items
+                        .with_label_values(&[&item.name, &item.kind, &item.condition])
+                        .set(1.0);
+                }
+
+                tracing::info!("Reloaded configuration");
+            }
+        }
+        .instrument(tracing::info_span!("Dynamic Config loader")),
+    );
 
     tracing::info!("Starting to listen on 0.0.0.0:80");
 
