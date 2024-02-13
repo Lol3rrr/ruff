@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use rand::{Rng, SeedableRng};
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 use serde::Deserialize;
 use tracing::Instrument;
 
@@ -291,7 +291,13 @@ pub async fn gather(
 
         let items = items.load();
 
-        for item in items.as_ref() {
+        let shuffled = {
+            let mut tmp: Vec<_> = (*items.as_ref()).clone();
+            tmp.shuffle(&mut rng);
+            tmp
+        };
+
+        for (i, item) in shuffled.iter().enumerate() {
             async {
                 let kind_str: &str = &item.kind;
                 let condition_str: &str = item.condition;
@@ -345,7 +351,12 @@ pub async fn gather(
 
                 tokio::time::sleep(Duration::from_millis(rng.gen_range(2500..4500))).await;
             }
-            .instrument(tracing::info_span!("Updating Item Stats", ?item))
+            .instrument(tracing::info_span!(
+                "Updating Item Stats",
+                item = item.name,
+                current = i + 1,
+                total_items = shuffled.len()
+            ))
             .await;
         }
 

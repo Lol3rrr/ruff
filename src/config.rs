@@ -78,7 +78,7 @@ pub struct ConfigItem {
     pub kind: ItemKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Item<'s> {
     pub name: String,
     pub buff_id: u64,
