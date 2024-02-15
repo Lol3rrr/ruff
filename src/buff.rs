@@ -289,6 +289,8 @@ pub async fn gather(
     loop {
         tracing::info!("Loading Buff Data");
 
+        let start_time = std::time::Instant::now();
+
         let items = items.load();
 
         let shuffled = {
@@ -359,6 +361,9 @@ pub async fn gather(
             ))
             .await;
         }
+
+        let elapsed = start_time.elapsed();
+        tracing::info!("Updating stats took {:?}", elapsed);
 
         tokio::time::sleep(Duration::from_secs(60)).await;
     }
