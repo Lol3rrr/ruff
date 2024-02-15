@@ -150,6 +150,7 @@ pub enum LoadError {
     StatusCode(reqwest::StatusCode),
     Deserialzing(serde_json::Error),
     ErrorResponse { msg: String },
+    NoSellEntries,
 }
 
 impl Client {
@@ -263,7 +264,8 @@ impl Client {
                     .items
                     .iter()
                     .filter_map(|item| item.price.parse::<f64>().ok())
-                    .fold(f64::MAX, |acc, val| if val < acc { val } else { acc });
+                    .reduce(|acc, val| if val < acc { val } else { acc })
+                    .ok_or_else(|| LoadError::NoSellEntries)?;
 
                 Ok(SellOrderSummary { min })
             }
@@ -332,7 +334,7 @@ pub async fn gather(
 
                 match client.load_sellorders(&item).await {
                     Ok(sell_order) => {
-                        tracing::info!("Sell Order Summary {:?}", sell_order,);
+                        tracing::info!("Sell Order Summary {:?}", sell_order);
 
                         metrics
                             .sell_prices
