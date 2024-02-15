@@ -150,7 +150,7 @@ pub enum LoadError {
     StatusCode(reqwest::StatusCode),
     Deserialzing(serde_json::Error),
     ErrorResponse { msg: String },
-    NoSellEntries,
+    NoEntries,
 }
 
 impl Client {
@@ -201,11 +201,12 @@ impl Client {
                     })
                     .collect();
 
-                let max =
-                    items
-                        .iter()
-                        .map(|(p, _)| p)
-                        .fold(0.0, |acc, val| if *val > acc { *val } else { acc });
+                let max = items
+                    .iter()
+                    .map(|(p, _)| p)
+                    .reduce(|acc, val| if val > acc { val } else { acc })
+                    .copied()
+                    .ok_or_else(|| LoadError::NoEntries)?;
 
                 items.retain(|(p, _)| *p == max);
 
@@ -265,7 +266,7 @@ impl Client {
                     .iter()
                     .filter_map(|item| item.price.parse::<f64>().ok())
                     .reduce(|acc, val| if val < acc { val } else { acc })
-                    .ok_or_else(|| LoadError::NoSellEntries)?;
+                    .ok_or_else(|| LoadError::NoEntries)?;
 
                 Ok(SellOrderSummary { min })
             }
