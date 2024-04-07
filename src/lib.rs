@@ -11,6 +11,7 @@ pub struct Metrics {
     pub buy_listings: prometheus::GaugeVec,
     pub sell_prices: prometheus::GaugeVec,
     pub bought_at_prices: prometheus::GaugeVec,
+    pub last_update: prometheus::Gauge,
 }
 
 impl Metrics {
@@ -58,12 +59,18 @@ impl Metrics {
             .register(Box::new(bought_at_prices.clone()))
             .unwrap();
 
+        let last_update =
+            prometheus::Gauge::new("last_updated", "The Unix Timestamp of the last update")
+                .unwrap();
+        registry.register(Box::new(last_update.clone())).unwrap();
+
         Self {
             buy_prices,
             buy_counts,
             buy_listings,
             sell_prices,
             bought_at_prices,
+            last_update,
         }
     }
 }

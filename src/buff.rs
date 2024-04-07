@@ -368,6 +368,11 @@ pub async fn gather(
         let elapsed = start_time.elapsed();
         tracing::info!("Updating stats took {:?}", elapsed);
 
+        let unix_timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            .unwrap();
+        metrics.last_update.set(unix_timestamp.as_secs() as f64);
+
         tokio::time::sleep(Duration::from_secs(60)).await;
     }
 }
