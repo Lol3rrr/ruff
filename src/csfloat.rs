@@ -85,14 +85,12 @@ impl Client {
         tracing::debug!(?item, "Loading Item");
 
         let name = if item.kind == "knife" {
-            item.name.char_indices().rev().find(|(_, c)| *c == '(').and_then(|(idx, _)| {
-                Some(&item.name.as_str()[..idx])
-            }).unwrap_or(item.name.as_str())
+            format!("★ {}", item.name)
         } else {
-            item.name.as_str()
+            item.name.clone()
         };
 
-        let resp = self.req_client.get("https://csfloat.com/api/v1/listings").query(&[("sort_by", "lowest_price"), ("market_hash_name", name)]).header("Authorization", &self.token).send().await.map_err(|e| LoadListingError::Other("Send Request"))?;
+        let resp = self.req_client.get("https://csfloat.com/api/v1/listings").query(&[("sort_by", "lowest_price"), ("market_hash_name", &name)]).header("Authorization", &self.token).send().await.map_err(|e| LoadListingError::Other("Send Request"))?;
 
         let resp_headers = resp.headers();
         
