@@ -89,10 +89,12 @@ fn main() {
         .route("/metrics", axum::routing::get(metrics))
         .with_state(registry);
 
+    if false {
     runtime.spawn(ruff::buff::gather(
         item_list_orig.clone(),
         metrics_collection.clone(),
     ));
+    }
     
 
     if STEAM_LOADING {
