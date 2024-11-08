@@ -1,6 +1,7 @@
 pub mod buff;
 pub mod openexchange;
 pub mod steam;
+pub mod csfloat;
 
 pub mod config;
 
@@ -18,14 +19,14 @@ impl Metrics {
     pub fn new(registry: &prometheus::Registry) -> Self {
         let sell_prices = prometheus::GaugeVec::new(
             prometheus::Opts::new("sell_prices", "The minimum Sell Price (in RMB)"),
-            &["item", "kind", "condition"],
+            &["item", "kind", "condition", "marketplace"],
         )
         .unwrap();
         registry.register(Box::new(sell_prices.clone())).unwrap();
 
         let buy_prices = prometheus::GaugeVec::new(
             prometheus::Opts::new("buy_orders", "The max Buy Order Price (in RMB)"),
-            &["item", "kind", "condition"],
+            &["item", "kind", "condition", "marketplace"],
         )
         .unwrap();
         registry.register(Box::new(buy_prices.clone())).unwrap();
@@ -35,7 +36,7 @@ impl Metrics {
                 "buy_counts",
                 "The number of items that can be bought at the max Buy Order Price",
             ),
-            &["item", "kind", "condition"],
+            &["item", "kind", "condition", "marketplace"],
         )
         .unwrap();
         registry.register(Box::new(buy_counts.clone())).unwrap();
@@ -45,14 +46,14 @@ impl Metrics {
                 "buy_listings",
                 "The number of listings that buy at the max Buy Order Price",
             ),
-            &["item", "kind", "condition"],
+            &["item", "kind", "condition", "marketplace"],
         )
         .unwrap();
         registry.register(Box::new(buy_listings.clone())).unwrap();
 
         let bought_at_prices = prometheus::GaugeVec::new(
             prometheus::Opts::new("bought_at", "The Prices at which the items were bought"),
-            &["item", "kind", "condition"],
+            &["item", "kind", "condition", "marketplace"],
         )
         .unwrap();
         registry

@@ -307,7 +307,7 @@ pub async fn gather(
                 let kind_str: &str = &item.kind;
                 let condition_str: &str = item.condition;
 
-                let labels = [&item.name, kind_str, condition_str];
+                let labels = [&item.name, kind_str, condition_str, "buff"];
 
                 match client.load_buyorders(&item).await {
                     Ok(buy_order) => {

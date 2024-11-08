@@ -93,11 +93,20 @@ fn main() {
         item_list_orig.clone(),
         metrics_collection.clone(),
     ));
+    
 
     if STEAM_LOADING {
         runtime.spawn(ruff::steam::gather(
             config.items.clone(),
+            metrics_collection.clone(),
+        ));
+    }
+
+    if let Ok(api_token) = std::env::var("CSFLOAT_API_TOKEN") {
+        runtime.spawn(ruff::csfloat::gather(
+            item_list_orig.clone(),
             metrics_collection,
+            api_token,
         ));
     }
 
@@ -170,10 +179,12 @@ fn main() {
         .instrument(tracing::info_span!("Dynamic Config loader")),
     );
 
-    tracing::info!("Starting to listen on 0.0.0.0:80");
+    let addr = "0.0.0.0:80";
+
+    tracing::info!("Starting to listen on {}", addr);
 
     runtime.block_on(async move {
-        axum::Server::bind(&"0.0.0.0:80".parse().unwrap())
+        axum::Server::bind(&addr.parse().unwrap())
             .serve(app.into_make_service())
             .await
             .unwrap();

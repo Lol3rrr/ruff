@@ -7,6 +7,7 @@ pub struct Config {
 #[derive(Debug)]
 pub struct Conversions {
     pub rmb_to_euro: f64,
+    pub usd_to_euro: f64,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -22,6 +23,7 @@ struct LatestResponse {
 struct Rates {
     EUR: f64,
     CNY: f64,
+    USD: f64,
     #[serde(flatten)]
     others: HashMap<String, f64>,
 }
@@ -48,6 +50,7 @@ impl Config {
 
         Ok(Conversions {
             rmb_to_euro: content.rates.EUR / content.rates.CNY,
+            usd_to_euro: content.rates.EUR / content.rates.USD,
         })
     }
 }
@@ -63,6 +66,9 @@ pub async fn run(config: Config, conversions_metric: prometheus::GaugeVec) -> ! 
                 conversions_metric
                     .with_label_values(&["CNY", "EUR"])
                     .set(conversion_rates.rmb_to_euro);
+                conversions_metric
+                    .with_label_values(&["USD", "EUR"])
+                    .set(conversion_rates.usd_to_euro);
             }
             Err(e) => {
                 tracing::error!("Loading Conversion-Rates: {:?}", e);
