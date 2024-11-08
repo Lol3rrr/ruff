@@ -90,12 +90,11 @@ fn main() {
         .with_state(registry);
 
     if false {
-    runtime.spawn(ruff::buff::gather(
-        item_list_orig.clone(),
-        metrics_collection.clone(),
-    ));
+        runtime.spawn(ruff::buff::gather(
+            item_list_orig.clone(),
+            metrics_collection.clone(),
+        ));
     }
-    
 
     if STEAM_LOADING {
         runtime.spawn(ruff::steam::gather(

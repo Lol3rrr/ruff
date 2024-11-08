@@ -1,7 +1,7 @@
 pub mod buff;
+pub mod csfloat;
 pub mod openexchange;
 pub mod steam;
-pub mod csfloat;
 
 pub mod config;
 
@@ -11,6 +11,7 @@ pub struct Metrics {
     pub buy_counts: prometheus::GaugeVec,
     pub buy_listings: prometheus::GaugeVec,
     pub sell_prices: prometheus::GaugeVec,
+    pub sell_counts: prometheus::GaugeVec,
     pub bought_at_prices: prometheus::GaugeVec,
     pub last_update: prometheus::Gauge,
 }
@@ -19,10 +20,17 @@ impl Metrics {
     pub fn new(registry: &prometheus::Registry) -> Self {
         let sell_prices = prometheus::GaugeVec::new(
             prometheus::Opts::new("sell_prices", "The minimum Sell Price (in RMB)"),
-            &["item", "kind", "condition", "marketplace"],
+            &["item", "kind", "condition", "souvenir", "stattrak", "marketplace"],
         )
         .unwrap();
         registry.register(Box::new(sell_prices.clone())).unwrap();
+
+        let sell_counts = prometheus::GaugeVec::new(
+            prometheus::Opts::new("sell_count", "The number of skins being sold for this"),
+            &["item", "kind", "condition", "souvenir", "stattrak", "marketplace"],
+        )
+        .unwrap();
+        registry.register(Box::new(sell_counts.clone())).unwrap();
 
         let buy_prices = prometheus::GaugeVec::new(
             prometheus::Opts::new("buy_orders", "The max Buy Order Price (in RMB)"),
@@ -70,6 +78,7 @@ impl Metrics {
             buy_counts,
             buy_listings,
             sell_prices,
+            sell_counts,
             bought_at_prices,
             last_update,
         }
