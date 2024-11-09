@@ -337,10 +337,11 @@ pub async fn gather(
                     Ok(sell_order) => {
                         tracing::info!("Sell Order Summary {:?}", sell_order);
 
-                        metrics
-                            .sell_prices
-                            .with_label_values(&labels)
-                            .set(sell_order.min);
+                        // TODO
+                        //metrics
+                        //    .sell_prices
+                        //    .with_label_values(&labels)
+                        //    .set(sell_order.min);
                     }
                     Err(e) => {
                         tracing::error!("Loading Sell Orders {:?}", e);

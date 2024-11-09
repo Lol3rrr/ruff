@@ -1,7 +1,5 @@
 use crate::config::Item;
 
-use rand::{seq::SliceRandom, Rng, SeedableRng};
-
 mod data;
 
 pub struct Client {
@@ -232,18 +230,17 @@ pub async fn gather(
         };
 
         for priced in priced_items {
-            let condition = match priced.condition() {
-                Some(c) => c,
-                None => continue,
+            let _entered = tracing::info_span!("Update-Item", ?priced).entered();
+
+            let item = match crate::Item::try_from(priced.market_hash_name.as_str()) {
+                Ok(i) => i,
+                Err(e) => {
+                    tracing::warn!("Could not parse item: {:?}", e);
+                    continue;
+                }
             };
 
-            let is_souvenir = priced.is_souvenir().to_string();
-            let is_stattrak = priced.is_stattrak().to_string();
-            let is_special = priced.is_special().to_string();
-            let name = priced.name();
-
-            metrics.sell_prices.with_label_values(&[name, "weapon", condition, &is_souvenir, &is_stattrak, "csfloat"]).set(priced.min_price as f64 / 100.0);
-
+            metrics.set_price("csfloat", &item, priced.min_price as f64 / 100.0);
         }
 
         let elapsed = start_time.elapsed();
