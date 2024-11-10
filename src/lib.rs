@@ -60,27 +60,14 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
 
     fn try_from(value: &'s str) -> Result<Self, Self::Error> {
         match value.split_once('|').map(|(f, s)| (f.trim(), s.trim())) {
-            Some((weapon, _)) if weapon == "Sticker" => {
-                Ok(Self::Sticker {
-                    name: value,
-                })
-            }
-            Some((weapon, _)) if weapon == "Patch" => {
-                Ok(Self::Patch {
-                    name: value,
-                })
-            }
-            Some((weapon, _)) if weapon == "Charm" => {
-                Ok(Self::Charm {
-                    name: value,
-                })
-            }
+            Some((weapon, _)) if weapon == "Sticker" => Ok(Self::Sticker { name: value }),
+            Some((weapon, _)) if weapon == "Patch" => Ok(Self::Patch { name: value }),
+            Some((weapon, _)) if weapon == "Charm" => Ok(Self::Charm { name: value }),
             Some((weapon, second)) => {
                 let (skin, raw_condition) = second
                     .rsplit_once('(')
-                    .and_then(|(l, r)|
-                        Some((l.trim(), r.strip_suffix(')')?))
-                    ).ok_or(())?;
+                    .and_then(|(l, r)| Some((l.trim(), r.strip_suffix(')')?)))
+                    .ok_or(())?;
                 let condition = Condition::try_from(raw_condition)?;
 
                 let (weapon, is_special) = match weapon.strip_prefix("★") {
@@ -113,7 +100,7 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
                         weapon,
                         skin,
                         condition,
-                        stattrak
+                        stattrak,
                     })
                 }
             }
@@ -135,20 +122,14 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
             }
             None => {
                 if value.contains("Case") {
-                    return Ok(Self::Case {
-                        name: value,
-                    });
+                    return Ok(Self::Case { name: value });
                 }
 
                 if value.contains("Package") {
-                    return Ok(Self::Package {
-                        name: value
-                    });
+                    return Ok(Self::Package { name: value });
                 }
 
-                Ok(Self::Other {
-                    name: value
-                })
+                Ok(Self::Other { name: value })
             }
         }
     }
@@ -210,7 +191,7 @@ mod tests {
             stattrak: false,
         };
         let expected_ft = Item::Weapon {
-name: name_field_tested,
+            name: name_field_tested,
             weapon: "AK-47",
             skin: "Vulcan",
             condition: Condition::FieldTested,
@@ -218,7 +199,7 @@ name: name_field_tested,
             stattrak: false,
         };
         let expected_ww = Item::Weapon {
-name: name_well_worn,
+            name: name_well_worn,
             weapon: "AK-47",
             skin: "Vulcan",
             condition: Condition::WellWorn,
@@ -226,7 +207,7 @@ name: name_well_worn,
             stattrak: false,
         };
         let expected_bs = Item::Weapon {
-name: name_battle_scarred,
+            name: name_battle_scarred,
             weapon: "AK-47",
             skin: "Vulcan",
             condition: Condition::BattleScarred,
@@ -345,7 +326,7 @@ name: name_battle_scarred,
         let name = "Patch | Bayonet Frog";
 
         let expected = Item::Patch {
-            name: "Patch | Bayonet Frog"
+            name: "Patch | Bayonet Frog",
         };
 
         assert_eq!(expected, Item::try_from(name).unwrap());

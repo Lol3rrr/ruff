@@ -38,8 +38,12 @@ pub struct PriceListEntry {
 
 impl PriceListEntry {
     pub fn condition(&self) -> Option<&'static str> {
-        let (last_brace_idx, _) = self.market_hash_name.char_indices().rev().find(|(_, c)| *c == '(')?;
-        
+        let (last_brace_idx, _) = self
+            .market_hash_name
+            .char_indices()
+            .rev()
+            .find(|(_, c)| *c == '(')?;
+
         let trailing_stuff = &self.market_hash_name[last_brace_idx..];
 
         match trailing_stuff {

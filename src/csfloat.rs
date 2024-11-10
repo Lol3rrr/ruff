@@ -88,6 +88,8 @@ impl Client {
 
     #[tracing::instrument(skip(self))]
     pub async fn price_list(&mut self) -> Result<data::PriceListResponse, LoadListingError> {
+        // https://csfloat.com/api/v1/listings/price-list
+
         tracing::debug!("Loading Price List");
 
         let resp = self
@@ -241,6 +243,7 @@ pub async fn gather(
             };
 
             metrics.set_price("csfloat", &item, priced.min_price as f64 / 100.0);
+            metrics.set_count("csfloat", &item, priced.qty as f64);
         }
 
         let elapsed = start_time.elapsed();
