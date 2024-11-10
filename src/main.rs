@@ -54,7 +54,7 @@ fn main() {
             .collect::<Vec<_>>(),
     )));
 
-    let registry = prometheus::Registry::new_custom(Some("buff".to_string()), None).unwrap();
+    let registry = prometheus::Registry::new_custom(Some("ruff".to_string()), None).unwrap();
 
     let items = prometheus::GaugeVec::new(
         prometheus::Opts::new("items", "The Items being tracked"),
