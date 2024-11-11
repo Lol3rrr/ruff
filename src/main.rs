@@ -111,7 +111,9 @@ fn main() {
         ));
     }
 
-    runtime.spawn(ruff::skinport::gather(metrics_collection, String::new()));
+    if let Some((client_id, client_secret)) = std::env::var("SKINPORT_CLIENT_ID").ok().zip(std::env::var("SKINPORT_CLIENT_SECRET").ok()) {
+        runtime.spawn(ruff::skinport::gather(metrics_collection, client_id, client_secret));
+    }
 
     // Use SIGHUP to dynamically reload configuration
     let item_list = item_list_orig.clone();

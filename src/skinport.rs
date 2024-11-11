@@ -2,14 +2,16 @@ mod data;
 
 struct Client {
     req_client: reqwest::Client,
-    api_token: String,
+    client_id: String,
+    client_secret: String,
 }
 
 impl Client {
-    pub fn new(token: String) -> Self {
+    pub fn new(client_id: String, client_secret: String) -> Self {
         Self {
             req_client: reqwest::Client::new(),
-            api_token: token,
+            client_id,
+            client_secret
         }
     }
 
@@ -18,9 +20,15 @@ impl Client {
             .req_client
             .get("https://api.skinport.com/v1/items")
             .query(&[("app_id", "730"), ("currency", "USD")])
+            .basic_auth(&self.client_id, Some(&self.client_secret))
             .send()
             .await
             .map_err(|e| ())?;
+
+        if resp.status().as_u16() == 429 {
+            tracing::error!("Got rate-limited");
+            return Err(());
+        }
 
         if !resp.status().is_success() {
             dbg!(resp);
@@ -34,9 +42,9 @@ impl Client {
     }
 }
 
-#[tracing::instrument(skip(metrics, api_token))]
-pub async fn gather(metrics: crate::Metrics, api_token: String) {
-    let client = Client::new(api_token);
+#[tracing::instrument(skip(metrics, client_id, client_secret))]
+pub async fn gather(metrics: crate::Metrics, client_id: String, client_secret: String) {
+    let client = Client::new(client_id, client_secret);
 
     loop {
         tracing::info!("Loading Data");
