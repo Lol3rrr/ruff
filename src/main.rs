@@ -106,10 +106,12 @@ fn main() {
     if let Ok(api_token) = std::env::var("CSFLOAT_API_TOKEN") {
         runtime.spawn(ruff::csfloat::gather(
             item_list_orig.clone(),
-            metrics_collection,
+            metrics_collection.clone(),
             api_token,
         ));
     }
+
+    runtime.spawn(ruff::skinport::gather(metrics_collection, String::new()));
 
     // Use SIGHUP to dynamically reload configuration
     let item_list = item_list_orig.clone();

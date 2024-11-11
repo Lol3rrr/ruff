@@ -37,6 +37,8 @@ impl Metrics {
                 "condition",
                 "souvenir",
                 "stattrak",
+                "weapon",
+                "skin",
                 "marketplace",
             ],
         )

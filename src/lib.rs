@@ -1,6 +1,7 @@
 pub mod buff;
 pub mod csfloat;
 pub mod openexchange;
+pub mod skinport;
 pub mod steam;
 
 pub mod config;
