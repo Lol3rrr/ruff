@@ -1,0 +1,45 @@
+name: Testing/Linting
+
+on:
+  push:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        crate: [analysis, backend]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: 'true'
+        submodules: 'recursive'
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+    - name: Run Tests
+      run: cargo test -p ${{ matrix.crate }}
+
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: [analysis, backend]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install latest nightly
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly
+        override: true
+        components: rustfmt, clippy
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+    - name: Run Clippy
+      run: cargo clippy -p ${{ matrix.crate }}
+    - name: Run formatting
+      run: cargo fmt --check -p ${{ matrix.crate }}
