@@ -9,9 +9,7 @@ struct Client {
 #[derive(Debug)]
 enum LoadError {
     SendRequest(reqwest::Error),
-    RateLimited {
-        retry_after: Option<u64>,
-    },
+    RateLimited { retry_after: Option<u64> },
     DeserializeResponse(reqwest::Error),
     Other(&'static str),
 }
@@ -21,7 +19,7 @@ impl Client {
         Self {
             req_client: reqwest::Client::new(),
             client_id,
-            client_secret
+            client_secret,
         }
     }
 
@@ -36,10 +34,14 @@ impl Client {
             .map_err(|e| LoadError::SendRequest(e))?;
 
         if resp.status().as_u16() == 429 {
-            let retry_after = resp.headers().get("retry-after").map(|h| h.to_str().ok()).flatten().map(|v| v.parse::<u64>().ok()).flatten();
-            return Err(LoadError::RateLimited {
-                retry_after,
-            });
+            let retry_after = resp
+                .headers()
+                .get("retry-after")
+                .map(|h| h.to_str().ok())
+                .flatten()
+                .map(|v| v.parse::<u64>().ok())
+                .flatten();
+            return Err(LoadError::RateLimited { retry_after });
         }
 
         if !resp.status().is_success() {
@@ -47,9 +49,9 @@ impl Client {
             return Err(LoadError::Other("Unsuccessful response"));
         }
 
-        resp.json::<data::ItemsResponse>().await.map_err(|e| {
-            LoadError::DeserializeResponse(e)
-        })
+        resp.json::<data::ItemsResponse>()
+            .await
+            .map_err(|e| LoadError::DeserializeResponse(e))
     }
 }
 
@@ -83,7 +85,9 @@ pub async fn gather(metrics: crate::Metrics, client_id: String, client_secret: S
 
                 if let Some(wait_time) = retry_after {
                     let wait_dur = std::time::Duration::from_secs(wait_time);
-                    let diff_dur = wait_dur.checked_sub(std::time::Duration::from_secs(60 * 5)).unwrap_or(std::time::Duration::from_secs(1));
+                    let diff_dur = wait_dur
+                        .checked_sub(std::time::Duration::from_secs(60 * 5))
+                        .unwrap_or(std::time::Duration::from_secs(1));
 
                     tracing::warn!("Sleeping for {:?} before retrying", diff_dur);
                     tokio::time::sleep(diff_dur).await;

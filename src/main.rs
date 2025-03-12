@@ -111,8 +111,15 @@ fn main() {
         ));
     }
 
-    if let Some((client_id, client_secret)) = std::env::var("SKINPORT_CLIENT_ID").ok().zip(std::env::var("SKINPORT_CLIENT_SECRET").ok()) {
-        runtime.spawn(ruff::skinport::gather(metrics_collection, client_id, client_secret));
+    if let Some((client_id, client_secret)) = std::env::var("SKINPORT_CLIENT_ID")
+        .ok()
+        .zip(std::env::var("SKINPORT_CLIENT_SECRET").ok())
+    {
+        runtime.spawn(ruff::skinport::gather(
+            metrics_collection,
+            client_id,
+            client_secret,
+        ));
     }
 
     // Use SIGHUP to dynamically reload configuration

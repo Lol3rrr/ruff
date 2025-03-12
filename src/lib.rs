@@ -17,7 +17,21 @@ pub enum Item<'s> {
     Package {
         name: &'s str,
     },
-    Capsule,
+    Capsule {
+        name: &'s str,
+    },
+    PinsCapsule {
+        name: &'s str,
+    },
+    PatchPack {
+        name: &'s str,
+    },
+    MusicKitBox {
+        name: &'s str,
+    },
+    GraffitiBox {
+        name: &'s str,
+    },
     Weapon {
         name: &'s str,
         weapon: &'s str,
@@ -42,6 +56,9 @@ pub enum Item<'s> {
     Charm {
         name: &'s str,
     },
+    Agent {
+        name: &'s str,
+    },
     Other {
         name: &'s str,
     },
@@ -61,9 +78,30 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
 
     fn try_from(value: &'s str) -> Result<Self, Self::Error> {
         match value.split_once('|').map(|(f, s)| (f.trim(), s.trim())) {
-            Some((weapon, _)) if weapon == "Sticker" => Ok(Self::Sticker { name: value }),
-            Some((weapon, _)) if weapon == "Patch" => Ok(Self::Patch { name: value }),
-            Some((weapon, _)) if weapon == "Charm" => Ok(Self::Charm { name: value }),
+            Some(("Sticker", _)) => Ok(Self::Sticker { name: value }),
+            Some(("Patch", _)) => Ok(Self::Patch { name: value }),
+            Some(("Charm", _)) => Ok(Self::Charm { name: value }),
+            Some(("Autograph Capsule", _)) => Ok(Self::Capsule { name: value }),
+            Some((_, "The Professionals"))
+            | Some((_, "Guerrilla Warfare"))
+            | Some((_, "SWAT"))
+            | Some((_, "KSK"))
+            | Some((_, "Sabre"))
+            | Some((_, "SAS"))
+            | Some((_, "Phoenix"))
+            | Some((_, "Sabre Footsoldier"))
+            | Some((_, "NSWC SEAL"))
+            | Some((_, "NZSAS"))
+            | Some((_, "Elite Crew"))
+            | Some((_, "SEAL Frogman"))
+            | Some((_, "FBI"))
+            | Some((_, "FBI SWAT"))
+            | Some((_, "FBI HRT"))
+            | Some((_, "FBI Sniper"))
+            | Some((_, "Brazilian 1st Battalion"))
+            | Some((_, "TACP Cavalry"))
+            | Some((_, "USAF TACP")) => Ok(Self::Agent { name: value }),
+            Some((_, "Gendarmerie Nationale")) => Ok(Self::Agent { name: value }),
             Some((weapon, second)) => {
                 let (skin, raw_condition) = second
                     .rsplit_once('(')
@@ -128,6 +166,26 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
 
                 if value.contains("Package") {
                     return Ok(Self::Package { name: value });
+                }
+
+                if value.contains("Pins Capsule") {
+                    return Ok(Self::PinsCapsule { name: value });
+                }
+
+                if value.contains("Capsule") {
+                    return Ok(Self::Capsule { name: value });
+                }
+
+                if value.contains("Patch Pack") {
+                    return Ok(Self::PatchPack { name: value });
+                }
+
+                if value.contains("Music Kit Box") {
+                    return Ok(Self::MusicKitBox { name: value });
+                }
+
+                if value.contains("Graffiti Box") {
+                    return Ok(Self::GraffitiBox { name: value });
                 }
 
                 Ok(Self::Other { name: value })
@@ -339,6 +397,292 @@ mod tests {
 
         let expected = Item::Charm {
             name: "Charm | Diner Dog",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn autograph_capsule() {
+        let name = "Autograph Capsule | Gambit Gaming | Atlanta 2017";
+
+        let expected = Item::Capsule {
+            name: "Autograph Capsule | Gambit Gaming | Atlanta 2017",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_the_professionals() {
+        let name = "Sir Bloody Loudmouth Darryl | The Professionals";
+
+        let expected = Item::Agent {
+            name: "Sir Bloody Loudmouth Darryl | The Professionals",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_guerilla_warfare() {
+        let name = "Trapper | Guerrilla Warfare";
+
+        let expected = Item::Agent {
+            name: "Trapper | Guerrilla Warfare",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_swat() {
+        let name = "1st Lieutenant Farlow | SWAT";
+
+        let expected = Item::Agent {
+            name: "1st Lieutenant Farlow | SWAT",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_ksk() {
+        let name = "3rd Commando Company | KSK";
+
+        let expected = Item::Agent {
+            name: "3rd Commando Company | KSK",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_sabre() {
+        let name = "Blackwolf | Sabre";
+
+        let expected = Item::Agent {
+            name: "Blackwolf | Sabre",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_gendarmerie_nationale() {
+        let name = "Aspirant | Gendarmerie Nationale";
+
+        let expected = Item::Agent {
+            name: "Aspirant | Gendarmerie Nationale",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_nswc_seal() {
+        let name = "'Blueberries' Buckshot | NSWC SEAL";
+
+        let expected = Item::Agent {
+            name: "'Blueberries' Buckshot | NSWC SEAL",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_sas() {
+        let name = "B Squadron Officer | SAS";
+
+        let expected = Item::Agent {
+            name: "B Squadron Officer | SAS",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_seal_frogman() {
+        let name = "Cmdr. Davida 'Goggles' Fernandez | SEAL Frogman";
+
+        let expected = Item::Agent {
+            name: "Cmdr. Davida 'Goggles' Fernandez | SEAL Frogman",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_sabre_footsoldier() {
+        let name = "Dragomir | Sabre Footsoldier";
+
+        let expected = Item::Agent {
+            name: "Dragomir | Sabre Footsoldier",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_nzsas() {
+        let name = "D Squadron Officer | NZSAS";
+
+        let expected = Item::Agent {
+            name: "D Squadron Officer | NZSAS",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_phoenix() {
+        let name = "Enforcer | Phoenix";
+
+        let expected = Item::Agent {
+            name: "Enforcer | Phoenix",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_elite_crew() {
+        let name = "Ground Rebel  | Elite Crew";
+
+        let expected = Item::Agent {
+            name: "Ground Rebel  | Elite Crew",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_fbi_hrt() {
+        let name = "Markus Delrow | FBI HRT";
+
+        let expected = Item::Agent {
+            name: "Markus Delrow | FBI HRT",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_fbi_sniper() {
+        let name = "Michael Syfers  | FBI Sniper";
+
+        let expected = Item::Agent {
+            name: "Michael Syfers  | FBI Sniper",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_fbi_swat() {
+        let name = "Operator | FBI SWAT";
+
+        let expected = Item::Agent {
+            name: "Operator | FBI SWAT",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_brazilian_1st_battalion() {
+        let name = "Primeiro Tenente | Brazilian 1st Battalion";
+
+        let expected = Item::Agent {
+            name: "Primeiro Tenente | Brazilian 1st Battalion",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_fbi() {
+        let name = "Special Agent Ava | FBI";
+
+        let expected = Item::Agent {
+            name: "Special Agent Ava | FBI",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_tacp_cavalry() {
+        let name = "'Two Times' McCoy | TACP Cavalry";
+
+        let expected = Item::Agent {
+            name: "'Two Times' McCoy | TACP Cavalry",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn agents_usaf_tacp() {
+        let name = "'Two Times' McCoy | USAF TACP";
+
+        let expected = Item::Agent {
+            name: "'Two Times' McCoy | USAF TACP",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn warhammer_sticker_capsule() {
+        let name = "Warhammer 40,000 Sticker Capsule";
+
+        let expected = Item::Capsule {
+            name: "Warhammer 40,000 Sticker Capsule",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn stockholm_legends_patch_pack() {
+        let name = "Stockholm 2021 Legends Patch Pack";
+
+        let expected = Item::PatchPack {
+            name: "Stockholm 2021 Legends Patch Pack",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn collectible_pins_capsule() {
+        let name = "Half-Life: Alyx Collectible Pins Capsule";
+
+        let expected = Item::PinsCapsule {
+            name: "Half-Life: Alyx Collectible Pins Capsule",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn nightmode_music_kit_box() {
+        let name = "NIGHTMODE Music Kit Box";
+
+        let expected = Item::MusicKitBox {
+            name: "NIGHTMODE Music Kit Box",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn perfect_world_graffiti_box() {
+        let name = "Perfect World Graffiti Box";
+
+        let expected = Item::GraffitiBox {
+            name: "Perfect World Graffiti Box",
         };
 
         assert_eq!(expected, Item::try_from(name).unwrap());

@@ -113,7 +113,12 @@ impl Metrics {
             Item::Package { name } => {
                 Some([name, "package", "", "false", "false", "", "", marketplace])
             }
-            Item::Capsule => None,
+            Item::Capsule { name } => Some([name, "capsule", "", "false", "false", "", "", marketplace]),
+            Item::PatchPack { name } => Some([name, "patchpack", "", "false", "false", "", "", marketplace]),
+            Item::PinsCapsule { name } => Some([name, "pins-capsule", "", "false", "false", "", "", marketplace]),
+            Item::MusicKitBox { name } => Some([name, "music-kit-box", "", "false", "false", "", "", marketplace]),
+            Item::GraffitiBox { name } => Some([name, "graffiti-box", "", "false", "false", "", "", marketplace]),
+            Item::Agent { name } => Some([name, "agent", "", "false", "false", "", "", marketplace]),
             Item::Weapon {
                 name,
                 weapon,
