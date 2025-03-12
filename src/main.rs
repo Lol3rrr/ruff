@@ -9,6 +9,7 @@ struct Configuration {
 }
 
 const STEAM_LOADING: bool = false;
+const BITSKINS_LOADING: bool = true;
 
 fn main() {
     let subscriber = tracing_subscriber::fmt()
@@ -108,6 +109,13 @@ fn main() {
             item_list_orig.clone(),
             metrics_collection.clone(),
             api_token,
+        ));
+    }
+
+    if BITSKINS_LOADING {
+        runtime.spawn(ruff::bitskins::gather(
+            item_list_orig.clone(),
+            metrics_collection.clone(),
         ));
     }
 

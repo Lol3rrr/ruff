@@ -1,3 +1,4 @@
+pub mod bitskins;
 pub mod buff;
 pub mod csfloat;
 pub mod openexchange;
@@ -29,6 +30,10 @@ pub enum Item<'s> {
     MusicKitBox {
         name: &'s str,
     },
+    MusicKit {
+        name: &'s str,
+        stattrak: bool,
+    },
     GraffitiBox {
         name: &'s str,
     },
@@ -59,6 +64,9 @@ pub enum Item<'s> {
     Agent {
         name: &'s str,
     },
+    SealedGraffiti {
+        name: &'s str,
+    },
     Other {
         name: &'s str,
     },
@@ -82,6 +90,7 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
             Some(("Patch", _)) => Ok(Self::Patch { name: value }),
             Some(("Charm", _)) => Ok(Self::Charm { name: value }),
             Some(("Autograph Capsule", _)) => Ok(Self::Capsule { name: value }),
+            Some(("Sealed Graffiti", _)) => Ok(Self::SealedGraffiti { name: value }),
             Some((_, "The Professionals"))
             | Some((_, "Guerrilla Warfare"))
             | Some((_, "SWAT"))
@@ -102,6 +111,14 @@ impl<'s> TryFrom<&'s str> for Item<'s> {
             | Some((_, "TACP Cavalry"))
             | Some((_, "USAF TACP")) => Ok(Self::Agent { name: value }),
             Some((_, "Gendarmerie Nationale")) => Ok(Self::Agent { name: value }),
+            Some(("Music Kit", _)) => Ok(Self::MusicKit {
+                name: value,
+                stattrak: false,
+            }),
+            Some(("StatTrak™ Music Kit", _)) => Ok(Self::MusicKit {
+                name: value.strip_prefix("StatTrak™ ").unwrap(),
+                stattrak: true,
+            }),
             Some((weapon, second)) => {
                 let (skin, raw_condition) = second
                     .rsplit_once('(')
@@ -683,6 +700,41 @@ mod tests {
 
         let expected = Item::GraffitiBox {
             name: "Perfect World Graffiti Box",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn sealed_graffiti_sherrif_tiger_orange() {
+        let name = "Sealed Graffiti | Sheriff (Tiger Orange)";
+
+        let expected = Item::SealedGraffiti {
+            name: "Sealed Graffiti | Sheriff (Tiger Orange)",
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn music_kit() {
+        let name = "Music Kit | Noisia, Sharpened";
+
+        let expected = Item::MusicKit {
+            name: "Music Kit | Noisia, Sharpened",
+            stattrak: false,
+        };
+
+        assert_eq!(expected, Item::try_from(name).unwrap());
+    }
+
+    #[test]
+    fn stattrak_music_kit() {
+        let name = "StatTrak™ Music Kit | Sam Marshall, Bodacious";
+
+        let expected = Item::MusicKit {
+            name: "Music Kit | Sam Marshall, Bodacious",
+            stattrak: true,
         };
 
         assert_eq!(expected, Item::try_from(name).unwrap());
