@@ -182,7 +182,7 @@ impl Client {
     }
 }
 
-#[tracing::instrument(skip(items, metrics, api_token))]
+#[tracing::instrument(name = "csfloat", skip(items, metrics, api_token))]
 pub async fn gather(
     items: std::sync::Arc<arc_swap::ArcSwap<Vec<Item<'static>>>>,
     metrics: crate::Metrics,

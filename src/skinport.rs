@@ -55,7 +55,7 @@ impl Client {
     }
 }
 
-#[tracing::instrument(skip(metrics, client_id, client_secret))]
+#[tracing::instrument(name = "skinport", skip(metrics, client_id, client_secret))]
 pub async fn gather(metrics: crate::Metrics, client_id: String, client_secret: String) {
     let client = Client::new(client_id, client_secret);
 
