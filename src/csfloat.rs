@@ -182,6 +182,9 @@ impl Client {
     }
 }
 
+const PER_HOUR: u64 = 200;
+const BETWEEN_ITEMS: std::time::Duration = std::time::Duration::from_millis((60*60*1000) / PER_HOUR);
+
 #[tracing::instrument(name = "csfloat", skip(items, metrics, api_token))]
 pub async fn gather(
     items: std::sync::Arc<arc_swap::ArcSwap<Vec<Item<'static>>>>,
@@ -190,7 +193,7 @@ pub async fn gather(
 ) {
     let mut client = Client::new(api_token);
 
-    let mut between_items = std::time::Duration::from_millis((60 * 60 * 1000) / 200);
+    let mut between_items = BETWEEN_ITEMS.clone();
 
     loop {
         tracing::info!("Loading Data");

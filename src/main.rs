@@ -86,10 +86,18 @@ fn main() {
         runtime.spawn(ruff::openexchange::run(exchange_config, conversions_metric));
     }
 
+    let cached = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(String::new())));
+    {
+        let cached = cached.clone();
+        std::thread::spawn(move || {
+            precache(registry, cached, std::time::Duration::from_secs(10));
+        });
+    }
+
     let app = axum::Router::new()
         .route("/metrics", axum::routing::get(metrics))
         .route("/healthcheck", axum::routing::get(healthcheck))
-        .with_state(registry);
+        .with_state(cached);
 
     if false {
         runtime.spawn(ruff::buff::gather(
@@ -212,21 +220,44 @@ fn main() {
     });
 }
 
-#[tracing::instrument(skip(registry))]
+#[tracing::instrument(skip(cached))]
 async fn metrics(
-    axum::extract::State(registry): axum::extract::State<prometheus::Registry>,
-) -> String {
+    axum::extract::State(cached): axum::extract::State<std::sync::Arc<arc_swap::ArcSwap<String>>>,
+) -> axum::response::Response<String> {
     tracing::trace!("Getting metrics");
 
-    let encoder = prometheus::TextEncoder::new();
-    let metrics_families = registry.gather();
-    match encoder.encode_to_string(&metrics_families) {
-        Ok(r) => r,
-        Err(e) => {
-            tracing::error!("Encoding Metrics {:?}", e);
+    let value = cached.load_full();
 
-            String::new()
-        }
+    // TODO
+    // Consider compression for this
+
+    let mut resp = axum::response::Response::new(value.as_ref().clone());
+    resp.headers_mut().insert("Content-Type", "text/plain; version=0.0.4".parse().unwrap());
+    resp
+}
+
+#[tracing::instrument(skip(registry, cached))]
+fn precache(registry: prometheus::Registry, cached: std::sync::Arc<arc_swap::ArcSwap<String>>, interval: std::time::Duration) {
+    loop {
+        tracing::info!("Building cached response");
+        let start = std::time::Instant::now();
+
+        let encoder = prometheus::TextEncoder::new();
+        let metrics_families = registry.gather();
+        let value: std::sync::Arc<String> = match encoder.encode_to_string(&metrics_families) {
+            Ok(r) => r.into(),
+            Err(e) => {
+                tracing::error!("Encoding Metrics {:?}", e);
+
+                String::new().into()
+            }
+        };
+
+        cached.store(value);
+
+        tracing::info!("Build cache response in {:?}", start.elapsed());
+
+        std::thread::sleep(interval.clone());
     }
 }
 
