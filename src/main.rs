@@ -88,6 +88,7 @@ fn main() {
 
     let app = axum::Router::new()
         .route("/metrics", axum::routing::get(metrics))
+        .route("/healthcheck", axum::routing::get(healthcheck))
         .with_state(registry);
 
     if false {
@@ -227,4 +228,9 @@ async fn metrics(
             String::new()
         }
     }
+}
+
+#[tracing::instrument]
+async fn healthcheck() -> impl axum::response::IntoResponse {
+    "ready"
 }
