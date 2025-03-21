@@ -86,7 +86,7 @@ fn main() {
         runtime.spawn(ruff::openexchange::run(exchange_config, conversions_metric));
     }
 
-    let cached = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(String::new())));
+    let cached = std::sync::Arc::new(arc_swap::ArcSwap::new(std::sync::Arc::new(axum::body::Bytes::new())));
     {
         let cached = cached.clone();
         std::thread::spawn(move || {
@@ -222,34 +222,33 @@ fn main() {
 
 #[tracing::instrument(skip(cached))]
 async fn metrics(
-    axum::extract::State(cached): axum::extract::State<std::sync::Arc<arc_swap::ArcSwap<String>>>,
-) -> axum::response::Response<String> {
+    axum::extract::State(cached): axum::extract::State<std::sync::Arc<arc_swap::ArcSwap<axum::body::Bytes>>>,
+) -> impl axum::response::IntoResponse {
     tracing::trace!("Getting metrics");
 
     let value = cached.load_full();
+    let data: axum::body::Bytes = value.as_ref().clone();
 
     // TODO
-    // Consider compression for this
+    // Consider compression for this    
 
-    let mut resp = axum::response::Response::new(value.as_ref().clone());
-    resp.headers_mut().insert("Content-Type", "text/plain; version=0.0.4".parse().unwrap());
-    resp
+    ([(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")], data)
 }
 
 #[tracing::instrument(skip(registry, cached))]
-fn precache(registry: prometheus::Registry, cached: std::sync::Arc<arc_swap::ArcSwap<String>>, interval: std::time::Duration) {
+fn precache(registry: prometheus::Registry, cached: std::sync::Arc<arc_swap::ArcSwap<axum::body::Bytes>>, interval: std::time::Duration) {
     loop {
         tracing::info!("Building cached response");
         let start = std::time::Instant::now();
 
         let encoder = prometheus::TextEncoder::new();
         let metrics_families = registry.gather();
-        let value: std::sync::Arc<String> = match encoder.encode_to_string(&metrics_families) {
-            Ok(r) => r.into(),
+        let value: std::sync::Arc<axum::body::Bytes> = match encoder.encode_to_string(&metrics_families) {
+            Ok(r) => std::sync::Arc::new(r.into_bytes().into()),
             Err(e) => {
                 tracing::error!("Encoding Metrics {:?}", e);
 
-                String::new().into()
+                std::sync::Arc::new(axum::body::Bytes::new())
             }
         };
 
